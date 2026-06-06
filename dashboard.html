@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creator Dashboard — Origo Abroad</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0A1357; --blue: #2B5BD7; --violet: #5B2BD9;
+      --gold: #F5B400; --paper: #FAFBFD; --panel: #F3F4F6;
+      --border: #DEDFED; --muted: #8988AF; --red: #E11D2A; --green: #16A34A;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--paper); color: var(--navy); }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+      background: var(--navy);
+      display: flex; flex-direction: column;
+      padding: 0;
+      z-index: 100;
+    }
+    .sidebar-logo {
+      padding: 24px 20px 20px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+    }
+    .sidebar-logo .origo { font-size: 16px; font-weight: 800; color: white; }
+    .sidebar-logo .abroad { font-size: 16px; font-weight: 800; color: #60a5fa; }
+    .sidebar-logo .sub { font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing: 1px; text-transform: uppercase; margin-top: 2px; }
+
+    .sidebar-nav { padding: 16px 12px; flex: 1; }
+    .nav-label { font-size: 10px; font-weight: 700; color: rgba(255,255,255,0.3); letter-spacing: 1.5px; text-transform: uppercase; padding: 0 8px; margin: 16px 0 6px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: 8px;
+      color: rgba(255,255,255,0.65); font-size: 14px; font-weight: 500;
+      cursor: pointer; transition: all .15s; text-decoration: none;
+      margin-bottom: 2px;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.08); color: white; }
+    .nav-item.active { background: rgba(43,91,215,0.5); color: white; }
+    .nav-item .icon { width: 18px; text-align: center; font-size: 16px; }
+
+    .sidebar-user {
+      padding: 16px 20px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+    }
+    .user-name { font-size: 13px; font-weight: 700; color: white; }
+    .user-role { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 2px; }
+    .logout-btn {
+      margin-top: 12px; width: 100%; padding: 8px;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.5);
+      border: 1px solid rgba(255,255,255,0.1); border-radius: 7px;
+      font-size: 12px; cursor: pointer; transition: all .15s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.1); color: white; }
+
+    /* Main */
+    .main { margin-left: 240px; min-height: 100vh; }
+
+    .topbar {
+      padding: 20px 32px;
+      border-bottom: 1px solid var(--border);
+      background: white;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .topbar h1 { font-size: 20px; font-weight: 800; color: var(--navy); }
+    .topbar-sub { font-size: 13px; color: var(--muted); }
+
+    .content { padding: 32px; }
+
+    /* Stats row */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .stat-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .stat-label { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .stat-value { font-size: 28px; font-weight: 800; color: var(--navy); }
+    .stat-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+    .stat-card.highlight { background: linear-gradient(135deg, var(--navy), #1E1E8C); border: none; }
+    .stat-card.highlight .stat-label, .stat-card.highlight .stat-sub { color: rgba(255,255,255,0.5); }
+    .stat-card.highlight .stat-value { color: white; }
+
+    /* Referral link box */
+    .link-box {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 24px;
+      margin-bottom: 28px;
+    }
+    .link-box h2 { font-size: 15px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+    .link-box p { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+    .link-row {
+      display: flex; gap: 10px; align-items: center;
+    }
+    .link-input {
+      flex: 1; padding: 11px 14px;
+      background: var(--panel); border: 1.5px solid var(--border);
+      border-radius: 9px; font-size: 13px; color: var(--navy);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      outline: none;
+    }
+    .btn-copy {
+      padding: 11px 20px;
+      background: var(--blue); color: white;
+      border: none; border-radius: 9px;
+      font-size: 13px; font-weight: 700; cursor: pointer;
+      transition: all .15s; white-space: nowrap;
+    }
+    .btn-copy:hover { background: #2251c5; }
+    .btn-copy.copied { background: var(--green); }
+    .btn-share {
+      padding: 11px 16px;
+      background: var(--panel); color: var(--navy);
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: all .15s;
+    }
+    .btn-share:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* Leads table */
+    .section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-header h2 { font-size: 17px; font-weight: 700; color: var(--navy); }
+    .filter-row { display: flex; gap: 8px; }
+    .filter-btn {
+      padding: 6px 14px;
+      border: 1.5px solid var(--border); border-radius: 20px;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      background: white; cursor: pointer; transition: all .15s;
+    }
+    .filter-btn.active { border-color: var(--blue); color: var(--blue); background: #eff6ff; }
+
+    .table-wrap {
+      background: white; border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead { background: var(--panel); }
+    th {
+      padding: 12px 16px; text-align: left;
+      font-size: 11px; font-weight: 700; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      border-bottom: 1px solid var(--border);
+    }
+    td {
+      padding: 14px 16px;
+      font-size: 13px; color: var(--navy);
+      border-bottom: 1px solid var(--border);
+      vertical-align: top;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8faff; }
+
+    .student-name { font-weight: 700; }
+    .student-email { font-size: 12px; color: var(--muted); }
+    .student-phone { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    .badge {
+      display: inline-block; padding: 3px 10px;
+      border-radius: 20px; font-size: 11px; font-weight: 700;
+    }
+    .badge.new { background: #dbeafe; color: #1e40af; }
+    .badge.contacted { background: #fef9c3; color: #854d0e; }
+    .badge.converted { background: #dcfce7; color: #166534; }
+    .badge.closed { background: var(--panel); color: var(--muted); }
+
+    .status-select {
+      padding: 4px 8px; border: 1px solid var(--border);
+      border-radius: 6px; font-size: 12px; color: var(--navy);
+      background: white; cursor: pointer; outline: none;
+    }
+
+    .tag { display: inline-block; background: var(--panel); color: var(--navy); padding: 2px 8px; border-radius: 4px; font-size: 11px; margin-right: 4px; margin-top: 2px; }
+
+    .empty-state {
+      text-align: center; padding: 60px 32px;
+    }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+    .empty-state p { font-size: 13px; color: var(--muted); max-width: 280px; margin: 0 auto; }
+
+    .loading { text-align: center; padding: 40px; color: var(--muted); font-size: 14px; }
+
+    /* Spinner */
+    .spinner {
+      display: inline-block; width: 18px; height: 18px;
+      border: 2px solid var(--border); border-top-color: var(--blue);
+      border-radius: 50%; animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Toast */
+    .toast {
+      position: fixed; bottom: 24px; right: 24px;
+      background: var(--navy); color: white;
+      padding: 12px 20px; border-radius: 10px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; transform: translateY(10px);
+      transition: all .2s; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 900px) {
+      .stats-grid { grid-template-columns: 1fr 1fr; }
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <div><span class="origo">ORIGO</span> <span class="abroad">Abroad</span></div>
+      <div class="sub">Creator Portal</div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-label">Menu</div>
+      <a class="nav-item active" href="/dashboard.html">
+        <span class="icon">📊</span> Dashboard
+      </a>
+      <a class="nav-item" href="#" onclick="scrollToLeads()">
+        <span class="icon">👥</span> My Leads
+      </a>
+      <a class="nav-item" href="#" onclick="showProfile()">
+        <span class="icon">👤</span> My Profile
+      </a>
+
+      <div class="nav-label">Resources</div>
+      <a class="nav-item" href="https://origoabroad.com" target="_blank">
+        <span class="icon">🌍</span> Origo Website
+      </a>
+      <a class="nav-item" href="mailto:partners@origoabroad.com">
+        <span class="icon">✉️</span> Contact Origo
+      </a>
+    </div>
+
+    <div class="sidebar-user">
+      <div class="user-name" id="sidebarName">Loading...</div>
+      <div class="user-role">Content Creator Partner</div>
+      <button class="logout-btn" onclick="handleLogout()">Sign Out</button>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="topbar">
+      <div>
+        <h1 id="welcomeMsg">Creator Dashboard</h1>
+        <div class="topbar-sub">Track your referrals and earnings</div>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- Stats -->
+      <div class="stats-grid">
+        <div class="stat-card highlight">
+          <div class="stat-label">Total Leads</div>
+          <div class="stat-value" id="statTotal">—</div>
+          <div class="stat-sub">All time</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">New</div>
+          <div class="stat-value" id="statNew" style="color:var(--blue)">—</div>
+          <div class="stat-sub">Awaiting contact</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Contacted</div>
+          <div class="stat-value" id="statContacted" style="color:var(--gold)">—</div>
+          <div class="stat-sub">In progress</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Converted</div>
+          <div class="stat-value" id="statConverted" style="color:var(--green)">—</div>
+          <div class="stat-sub">Enrolled students</div>
+        </div>
+      </div>
+
+      <!-- Referral Link -->
+      <div class="link-box">
+        <h2>🔗 Your Referral Form Link</h2>
+        <p>Share this link with students. When they fill it, you'll both get notified and the lead will appear below.</p>
+        <div class="link-row">
+          <input class="link-input" id="refLink" value="Loading..." readonly>
+          <button class="btn-copy" id="copyBtn" onclick="copyLink()">Copy Link</button>
+          <button class="btn-share" onclick="shareLink()">Share ↗</button>
+        </div>
+      </div>
+
+      <!-- Leads Table -->
+      <div id="leadsSection">
+        <div class="section-header">
+          <h2>Your Leads</h2>
+          <div class="filter-row">
+            <button class="filter-btn active" onclick="filterLeads('all', this)">All</button>
+            <button class="filter-btn" onclick="filterLeads('new', this)">New</button>
+            <button class="filter-btn" onclick="filterLeads('contacted', this)">Contacted</button>
+            <button class="filter-btn" onclick="filterLeads('converted', this)">Converted</button>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <div id="leadsContainer" class="loading">
+            <span class="spinner"></span> Loading leads...
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ─── Supabase Config ─────────────────────────────────────────────────────────
+    const SUPABASE_URL = 'https://cporztleduzetlznksin.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwb3J6dGxlZHV6ZXRsem5rc2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MjQ4NjcsImV4cCI6MjA5NjMwMDg2N30.OJzSlUEzNEW69H1PRoJwfn_cj3sjLNeV9TdVX--k58M';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const BASE_URL = 'https://creators.origoabroad.com';
+
+    let currentUser = null;
+    let creatorProfile = null;
+    let allLeads = [];
+    let currentFilter = 'all';
+
+    // ─── Auth check ──────────────────────────────────────────────────────────────
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = '/index.html';
+        return;
+      }
+      currentUser = session.user;
+      await loadProfile();
+      await loadLeads();
+    })();
+
+    // ─── Load creator profile ────────────────────────────────────────────────────
+    async function loadProfile() {
+      const { data, error } = await sb
+        .from('creator_profiles')
+        .select('*')
+        .eq('id', currentUser.id)
+        .single();
+
+      if (error || !data) {
+        window.location.href = '/index.html';
+        return;
+      }
+
+      creatorProfile = data;
+      const name = data.full_name.split(' ')[0];
+      document.getElementById('welcomeMsg').textContent = `Welcome, ${name} 👋`;
+      document.getElementById('sidebarName').textContent = data.full_name;
+      document.getElementById('refLink').value = `${BASE_URL}/form?ref=${data.username}`;
+    }
+
+    // ─── Load leads ──────────────────────────────────────────────────────────────
+    async function loadLeads() {
+      const { data, error } = await sb
+        .from('leads')
+        .select('*')
+        .eq('creator_id', currentUser.id)
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        document.getElementById('leadsContainer').innerHTML =
+          '<div style="padding:32px;text-align:center;color:#e11d2a">Failed to load leads. Please refresh.</div>';
+        return;
+      }
+
+      allLeads = data || [];
+      updateStats();
+      renderLeads(allLeads);
+    }
+
+    // ─── Stats ───────────────────────────────────────────────────────────────────
+    function updateStats() {
+      document.getElementById('statTotal').textContent = allLeads.length;
+      document.getElementById('statNew').textContent = allLeads.filter(l => l.status === 'new').length;
+      document.getElementById('statContacted').textContent = allLeads.filter(l => l.status === 'contacted').length;
+      document.getElementById('statConverted').textContent = allLeads.filter(l => l.status === 'converted').length;
+    }
+
+    // ─── Render table ────────────────────────────────────────────────────────────
+    function renderLeads(leads) {
+      const container = document.getElementById('leadsContainer');
+
+      if (leads.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state">
+            <div class="icon">📭</div>
+            <h3>${currentFilter === 'all' ? 'No leads yet' : `No ${currentFilter} leads`}</h3>
+            <p>${currentFilter === 'all'
+              ? 'Share your referral link with students and their enquiries will appear here.'
+              : `You have no leads with "${currentFilter}" status.`}</p>
+          </div>`;
+        return;
+      }
+
+      const rows = leads.map(lead => `
+        <tr>
+          <td>
+            <div class="student-name">${escHtml(lead.student_name)}</div>
+            <div class="student-email">${escHtml(lead.student_email)}</div>
+            <div class="student-phone">${escHtml(lead.student_phone)}</div>
+          </td>
+          <td>
+            ${lead.country_of_interest ? `<span class="tag">🌍 ${escHtml(lead.country_of_interest)}</span>` : ''}
+            ${lead.course_interest ? `<span class="tag">📚 ${escHtml(lead.course_interest)}</span>` : ''}
+            ${lead.budget ? `<span class="tag">💰 ${escHtml(lead.budget)}</span>` : ''}
+            ${lead.intake_year ? `<span class="tag">📅 ${escHtml(lead.intake_year)}</span>` : ''}
+          </td>
+          <td>${lead.city ? escHtml(lead.city) : '—'}</td>
+          <td>
+            <select class="status-select" onchange="updateStatus('${lead.id}', this.value)">
+              <option value="new" ${lead.status === 'new' ? 'selected' : ''}>🔵 New</option>
+              <option value="contacted" ${lead.status === 'contacted' ? 'selected' : ''}>🟡 Contacted</option>
+              <option value="converted" ${lead.status === 'converted' ? 'selected' : ''}>🟢 Converted</option>
+              <option value="closed" ${lead.status === 'closed' ? 'selected' : ''}>⚫ Closed</option>
+            </select>
+          </td>
+          <td style="color:var(--muted);font-size:12px;">${formatDate(lead.created_at)}</td>
+          <td>
+            <a href="mailto:${escHtml(lead.student_email)}" style="color:var(--blue);font-size:12px;font-weight:600;text-decoration:none;">Email ↗</a>
+            ${lead.student_phone ? `&nbsp;·&nbsp;<a href="https://wa.me/${lead.student_phone.replace(/\D/g,'')}" target="_blank" style="color:#25d366;font-size:12px;font-weight:600;text-decoration:none;">WhatsApp ↗</a>` : ''}
+          </td>
+        </tr>
+      `).join('');
+
+      container.innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Student</th>
+              <th>Preferences</th>
+              <th>City</th>
+              <th>Status</th>
+              <th>Submitted</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+        </table>`;
+    }
+
+    // ─── Filter ──────────────────────────────────────────────────────────────────
+    function filterLeads(status, btn) {
+      currentFilter = status;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const filtered = status === 'all' ? allLeads : allLeads.filter(l => l.status === status);
+      renderLeads(filtered);
+    }
+
+    // ─── Update lead status ──────────────────────────────────────────────────────
+    async function updateStatus(leadId, newStatus) {
+      const { error } = await sb
+        .from('leads')
+        .update({ status: newStatus })
+        .eq('id', leadId);
+
+      if (error) {
+        showToast('Failed to update status');
+        return;
+      }
+
+      const lead = allLeads.find(l => l.id === leadId);
+      if (lead) lead.status = newStatus;
+      updateStats();
+      showToast('Status updated ✓');
+    }
+
+    // ─── Copy link ───────────────────────────────────────────────────────────────
+    function copyLink() {
+      const link = document.getElementById('refLink').value;
+      navigator.clipboard.writeText(link).then(() => {
+        const btn = document.getElementById('copyBtn');
+        btn.textContent = '✓ Copied!';
+        btn.classList.add('copied');
+        setTimeout(() => {
+          btn.textContent = 'Copy Link';
+          btn.classList.remove('copied');
+        }, 2000);
+      });
+    }
+
+    function shareLink() {
+      const link = document.getElementById('refLink').value;
+      const text = `Apply to study abroad through Origo Abroad — I'm a verified partner! Fill in your details here: ${link}`;
+      if (navigator.share) {
+        navigator.share({ title: 'Study Abroad with Origo Abroad', text, url: link });
+      } else {
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank');
+      }
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────────────────────
+    function escHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function formatDate(iso) {
+      const d = new Date(iso);
+      return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 2500);
+    }
+
+    function scrollToLeads() {
+      document.getElementById('leadsSection').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function handleLogout() {
+      await sb.auth.signOut();
+      window.location.href = '/index.html';
+    }
+
+    function showProfile() {
+      if (!creatorProfile) return;
+      showToast(`@${creatorProfile.username} · ${creatorProfile.email}`);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Study Abroad Enquiry — Origo Abroad</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --navy: #0A1357; --blue: #2B5BD7; --violet: #5B2BD9;
+      --gold: #F5B400; --paper: #FAFBFD; --panel: #F3F4F6;
+      --border: #DEDFED; --muted: #8988AF; --red: #E11D2A; --green: #16A34A;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--paper);
+      min-height: 100vh;
+    }
+
+    /* Hero banner */
+    .hero {
+      background: linear-gradient(135deg, var(--navy) 0%, #1E1E8C 50%, var(--violet) 100%);
+      padding: 40px 24px 60px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; inset: 0;
+      background-image:
+        radial-gradient(circle at 20% 50%, rgba(43,91,215,0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(91,43,217,0.3) 0%, transparent 50%);
+    }
+    .hero-content { position: relative; z-index: 1; max-width: 600px; margin: 0 auto; }
+    .hero-logo {
+      display: inline-flex; align-items: center; gap: 10px;
+      text-decoration: none; margin-bottom: 24px;
+    }
+    .hero-logo .icon {
+      width: 44px; height: 44px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+      backdrop-filter: blur(10px);
+    }
+    .hero-logo .text { text-align: left; }
+    .hero-logo .origo { font-size: 18px; font-weight: 800; color: white; }
+    .hero-logo .abroad { font-size: 18px; font-weight: 800; color: #93c5fd; }
+
+    .hero h1 { font-size: 28px; font-weight: 800; color: white; line-height: 1.25; margin-bottom: 10px; }
+    .hero h1 span { color: var(--gold); }
+    .hero p { font-size: 15px; color: rgba(255,255,255,0.75); line-height: 1.6; }
+
+    .creator-tag {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 20px;
+      padding: 6px 16px;
+      margin-top: 20px;
+      backdrop-filter: blur(10px);
+    }
+    .creator-tag span { font-size: 13px; color: rgba(255,255,255,0.85); font-weight: 500; }
+    .creator-tag strong { color: white; }
+
+    /* Trust badges */
+    .trust-bar {
+      display: flex; justify-content: center; gap: 24px;
+      flex-wrap: wrap;
+      background: white; border-bottom: 1px solid var(--border);
+      padding: 14px 24px;
+    }
+    .trust-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); font-weight: 500; }
+    .trust-item .dot { color: var(--green); font-size: 8px; }
+
+    /* Form card */
+    .form-wrap { max-width: 640px; margin: -28px auto 40px; padding: 0 20px; position: relative; z-index: 2; }
+
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 8px 40px rgba(10,19,87,0.10);
+    }
+
+    .card-header { margin-bottom: 28px; }
+    .card-header h2 { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 4px; }
+    .card-header p { font-size: 13px; color: var(--muted); }
+
+    /* Progress indicator */
+    .progress-bar { display: flex; gap: 6px; margin-bottom: 28px; }
+    .progress-step {
+      flex: 1; height: 4px; border-radius: 2px;
+      background: var(--border); transition: background .3s;
+    }
+    .progress-step.done { background: var(--blue); }
+
+    /* Form sections */
+    .form-section { display: none; flex-direction: column; gap: 18px; }
+    .form-section.active { display: flex; }
+
+    .section-title {
+      font-size: 13px; font-weight: 700; color: var(--blue);
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding-bottom: 10px; border-bottom: 1px solid var(--border);
+      margin-bottom: -4px;
+    }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .field label .req { color: var(--red); }
+    .field input, .field select, .field textarea {
+      padding: 12px 14px;
+      border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 14px; color: var(--navy); background: var(--paper);
+      outline: none; transition: border-color .15s; font-family: inherit;
+    }
+    .field input:focus, .field select:focus, .field textarea:focus {
+      border-color: var(--blue); background: white;
+    }
+    .field input.error, .field select.error { border-color: var(--red); }
+    .field .err-msg { font-size: 12px; color: var(--red); display: none; }
+    .field .err-msg.show { display: block; }
+    .field textarea { resize: vertical; min-height: 80px; }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+    /* Select grid */
+    .select-grid {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;
+    }
+    .select-chip {
+      padding: 10px 8px; border: 1.5px solid var(--border); border-radius: 9px;
+      font-size: 12px; font-weight: 600; color: var(--muted);
+      text-align: center; cursor: pointer; transition: all .15s;
+      background: white;
+    }
+    .select-chip:hover { border-color: var(--blue); color: var(--blue); }
+    .select-chip.selected { border-color: var(--blue); background: #eff6ff; color: var(--blue); }
+    .select-chip .emoji { font-size: 18px; display: block; margin-bottom: 3px; }
+
+    /* Navigation buttons */
+    .btn-row { display: flex; gap: 10px; margin-top: 8px; }
+    .btn-next {
+      flex: 1; padding: 14px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: white; border: none; border-radius: 10px;
+      font-size: 15px; font-weight: 700; cursor: pointer;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn-next:hover { opacity: .92; }
+    .btn-next:active { transform: scale(.99); }
+    .btn-next:disabled { opacity: .6; cursor: not-allowed; }
+    .btn-back {
+      padding: 14px 20px;
+      background: var(--panel); color: var(--navy);
+      border: 1.5px solid var(--border); border-radius: 10px;
+      font-size: 14px; font-weight: 600; cursor: pointer; transition: all .15s;
+    }
+    .btn-back:hover { border-color: var(--navy); }
+
+    /* Success state */
+    .success-state {
+      display: none; text-align: center; padding: 20px 0;
+    }
+    .success-icon {
+      width: 72px; height: 72px;
+      background: linear-gradient(135deg, var(--green), #15803d);
+      border-radius: 50%; font-size: 32px;
+      display: flex; align-items: center; justify-content: center;
+      margin: 0 auto 20px;
+    }
+    .success-state h2 { font-size: 22px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+    .success-state p { font-size: 14px; color: var(--muted); line-height: 1.6; max-width: 360px; margin: 0 auto; }
+    .success-steps { margin-top: 24px; text-align: left; }
+    .success-step {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .success-step:last-child { border-bottom: none; }
+    .step-num {
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--blue); color: white;
+      font-size: 12px; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .step-text { font-size: 13px; color: var(--navy); }
+    .step-text strong { font-weight: 700; }
+
+    /* Footer */
+    .page-footer {
+      text-align: center; padding: 20px;
+      font-size: 12px; color: var(--muted);
+    }
+    .page-footer a { color: var(--blue); text-decoration: none; }
+
+    .spinner {
+      display: inline-block; width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4); border-top-color: white;
+      border-radius: 50%; animation: spin .7s linear infinite;
+      margin-right: 8px; vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    @media (max-width: 540px) {
+      .card { padding: 24px 20px; }
+      .field-row { grid-template-columns: 1fr; }
+      .select-grid { grid-template-columns: repeat(2, 1fr); }
+      .trust-bar { gap: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-content">
+      <a href="https://origoabroad.com" class="hero-logo" target="_blank">
+        <div class="icon">🌍</div>
+        <div class="text">
+          <div><span class="origo">ORIGO</span> <span class="abroad">Abroad</span></div>
+        </div>
+      </a>
+      <h1>Start Your<br><span>Global Education Journey</span></h1>
+      <p>Fill in your details and our expert counselors will get in touch within 24 hours — completely free.</p>
+      <div id="creatorTag" class="creator-tag" style="display:none">
+        <span>✦ Referred by <strong id="creatorNameTag">a creator partner</strong></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trust bar -->
+  <div class="trust-bar">
+    <div class="trust-item"><span class="dot">●</span> Free consultation</div>
+    <div class="trust-item"><span class="dot">●</span> 3,200+ universities</div>
+    <div class="trust-item"><span class="dot">●</span> Education loans up to ₹2 Crore</div>
+    <div class="trust-item"><span class="dot">●</span> No spam, ever</div>
+  </div>
+
+  <!-- Form -->
+  <div class="form-wrap">
+    <div class="card">
+
+      <!-- Not found state (invalid creator link) -->
+      <div id="notFoundState" style="display:none;text-align:center;padding:30px 0">
+        <div style="font-size:48px;margin-bottom:16px">🔗</div>
+        <h2 style="color:var(--navy);margin-bottom:8px">Invalid Referral Link</h2>
+        <p style="color:var(--muted);font-size:14px">This link doesn't seem to be valid. Please check with the person who shared it, or visit <a href="https://origoabroad.com" style="color:var(--blue)">origoabroad.com</a> directly.</p>
+      </div>
+
+      <!-- Main form -->
+      <div id="mainForm">
+        <div class="card-header">
+          <h2>Tell us about yourself</h2>
+          <p>Takes about 2 minutes · All fields marked <span style="color:var(--red)">*</span> are required</p>
+        </div>
+
+        <!-- Progress -->
+        <div class="progress-bar">
+          <div class="progress-step done" id="step1bar"></div>
+          <div class="progress-step" id="step2bar"></div>
+          <div class="progress-step" id="step3bar"></div>
+        </div>
+
+        <!-- STEP 1: Personal Info -->
+        <div class="form-section active" id="step1">
+          <div class="section-title">📋 Step 1 of 3 — Personal Details</div>
+          <div class="field-row">
+            <div class="field">
+              <label>Full Name <span class="req">*</span></label>
+              <input type="text" id="studentName" placeholder="Rahul Sharma">
+              <span class="err-msg" id="errName">Please enter your full name</span>
+            </div>
+            <div class="field">
+              <label>City <span class="req">*</span></label>
+              <input type="text" id="studentCity" placeholder="Hyderabad">
+              <span class="err-msg" id="errCity">Please enter your city</span>
+            </div>
+          </div>
+          <div class="field">
+            <label>Email Address <span class="req">*</span></label>
+            <input type="email" id="studentEmail" placeholder="rahul@example.com">
+            <span class="err-msg" id="errEmail">Please enter a valid email</span>
+          </div>
+          <div class="field">
+            <label>WhatsApp Number <span class="req">*</span></label>
+            <input type="tel" id="studentPhone" placeholder="+91 98765 43210">
+            <span class="err-msg" id="errPhone">Please enter your phone number</span>
+          </div>
+          <div class="btn-row">
+            <button class="btn-next" onclick="nextStep(1)">Next → Study Preferences</button>
+          </div>
+        </div>
+
+        <!-- STEP 2: Study Preferences -->
+        <div class="form-section" id="step2">
+          <div class="section-title">🎓 Step 2 of 3 — Study Preferences</div>
+
+          <div class="field">
+            <label>Which country are you interested in? <span class="req">*</span></label>
+            <div class="select-grid" id="countryGrid">
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🇬🇧</span>UK</div>
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🇨🇦</span>Canada</div>
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🇦🇺</span>Australia</div>
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🇩🇪</span>Germany</div>
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🇺🇸</span>USA</div>
+              <div class="select-chip" onclick="selectChip(this, 'country')"><span class="emoji">🌍</span>Other</div>
+            </div>
+            <span class="err-msg" id="errCountry">Please select a country</span>
+          </div>
+
+          <div class="field">
+            <label>What would you like to study? <span class="req">*</span></label>
+            <div class="select-grid" id="courseGrid">
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">💻</span>Engineering / IT</div>
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">📊</span>MBA / Business</div>
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">⚕️</span>Medicine / Health</div>
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">🎨</span>Design / Arts</div>
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">📐</span>Data Science</div>
+              <div class="select-chip" onclick="selectChip(this, 'course')"><span class="emoji">📚</span>Other</div>
+            </div>
+            <span class="err-msg" id="errCourse">Please select a course</span>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-back" onclick="prevStep(2)">← Back</button>
+            <button class="btn-next" onclick="nextStep(2)">Next → Budget & Timeline</button>
+          </div>
+        </div>
+
+        <!-- STEP 3: Budget & Message -->
+        <div class="form-section" id="step3">
+          <div class="section-title">💰 Step 3 of 3 — Budget & Timeline</div>
+
+          <div class="field">
+            <label>What's your estimated budget for studying abroad?</label>
+            <div class="select-grid" id="budgetGrid">
+              <div class="select-chip" onclick="selectChip(this, 'budget')"><span class="emoji">💵</span>Under ₹20L</div>
+              <div class="select-chip" onclick="selectChip(this, 'budget')"><span class="emoji">💶</span>₹20L – ₹40L</div>
+              <div class="select-chip" onclick="selectChip(this, 'budget')"><span class="emoji">💷</span>₹40L – ₹70L</div>
+              <div class="select-chip" onclick="selectChip(this, 'budget')"><span class="emoji">💎</span>₹70L+</div>
+              <div class="select-chip" onclick="selectChip(this, 'budget')" style="grid-column:span 2"><span class="emoji">🏦</span>Need education loan</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>When do you plan to start?</label>
+            <select id="intakeYear">
+              <option value="">Select intake year</option>
+              <option value="Jan 2026">January 2026</option>
+              <option value="Sep 2026">September 2026</option>
+              <option value="Jan 2027">January 2027</option>
+              <option value="Sep 2027">September 2027</option>
+              <option value="2028+">2028 or later</option>
+            </select>
+          </div>
+
+          <div class="field">
+            <label>Anything specific you'd like us to know? (optional)</label>
+            <textarea id="studentMessage" placeholder="e.g. I have a 7.5 CGPA and am looking for scholarships..."></textarea>
+          </div>
+
+          <div class="btn-row">
+            <button class="btn-back" onclick="prevStep(3)">← Back</button>
+            <button class="btn-next" id="submitBtn" onclick="handleSubmit()">Submit Enquiry →</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Success State -->
+      <div class="success-state" id="successState">
+        <div class="success-icon">✓</div>
+        <h2>You're all set!</h2>
+        <p>We've received your enquiry and will reach out within 24 hours. Check your inbox at <strong id="successEmail"></strong></p>
+        <div class="success-steps">
+          <div class="success-step">
+            <div class="step-num">1</div>
+            <div class="step-text"><strong>Confirmation email</strong> — Check your inbox, we've sent a confirmation with next steps.</div>
+          </div>
+          <div class="success-step">
+            <div class="step-num">2</div>
+            <div class="step-text"><strong>Counselor call</strong> — An Origo expert will call you within 24 hours to discuss your options.</div>
+          </div>
+          <div class="success-step">
+            <div class="step-num">3</div>
+            <div class="step-text"><strong>University shortlist</strong> — We'll prepare a personalized list of universities matching your profile.</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <a href="https://origoabroad.com" target="_blank">Origo Abroad</a> — Your Gateway to Global Education<br>
+    <a href="mailto:partners@origoabroad.com">partners@origoabroad.com</a>
+  </div>
+
+  <script>
+    // ─── Supabase Config ─────────────────────────────────────────────────────────
+    const SUPABASE_URL = 'https://cporztleduzetlznksin.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwb3J6dGxlZHV6ZXRsem5rc2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MjQ4NjcsImV4cCI6MjA5NjMwMDg2N30.OJzSlUEzNEW69H1PRoJwfn_cj3sjLNeV9TdVX--k58M';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let creatorProfile = null;
+    let currentStep = 1;
+    const selections = { country: null, course: null, budget: null };
+
+    // ─── Init: get creator from URL ──────────────────────────────────────────────
+    (async () => {
+      const params = new URLSearchParams(window.location.search);
+      const ref = params.get('ref');
+
+      if (!ref) {
+        document.getElementById('notFoundState').style.display = 'block';
+        document.getElementById('mainForm').style.display = 'none';
+        return;
+      }
+
+      const { data, error } = await sb
+        .from('creator_profiles')
+        .select('id, full_name, username, email')
+        .eq('username', ref)
+        .maybeSingle();
+
+      if (error || !data) {
+        document.getElementById('notFoundState').style.display = 'block';
+        document.getElementById('mainForm').style.display = 'none';
+        return;
+      }
+
+      creatorProfile = data;
+      document.title = `Study Abroad Enquiry via ${data.full_name} — Origo Abroad`;
+      document.getElementById('creatorNameTag').textContent = data.full_name;
+      document.getElementById('creatorTag').style.display = 'inline-flex';
+    })();
+
+    // ─── Chip selection ──────────────────────────────────────────────────────────
+    function selectChip(el, type) {
+      const grid = el.parentElement;
+      grid.querySelectorAll('.select-chip').forEach(c => c.classList.remove('selected'));
+      el.classList.add('selected');
+      selections[type] = el.textContent.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').trim();
+      // Hide error
+      const errMap = { country: 'errCountry', course: 'errCourse' };
+      if (errMap[type]) document.getElementById(errMap[type]).classList.remove('show');
+    }
+
+    // ─── Step navigation ─────────────────────────────────────────────────────────
+    function nextStep(from) {
+      if (!validateStep(from)) return;
+      goToStep(from + 1);
+    }
+
+    function prevStep(from) {
+      goToStep(from - 1);
+    }
+
+    function goToStep(step) {
+      document.querySelectorAll('.form-section').forEach(s => s.classList.remove('active'));
+      document.getElementById(`step${step}`).classList.add('active');
+
+      // Update progress
+      for (let i = 1; i <= 3; i++) {
+        document.getElementById(`step${i}bar`).classList.toggle('done', i <= step);
+      }
+      currentStep = step;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ─── Validation ──────────────────────────────────────────────────────────────
+    function validateStep(step) {
+      let valid = true;
+
+      if (step === 1) {
+        const name = document.getElementById('studentName').value.trim();
+        const city = document.getElementById('studentCity').value.trim();
+        const email = document.getElementById('studentEmail').value.trim();
+        const phone = document.getElementById('studentPhone').value.trim();
+
+        if (!name) { showErr('studentName', 'errName'); valid = false; }
+        else clearErr('studentName', 'errName');
+
+        if (!city) { showErr('studentCity', 'errCity'); valid = false; }
+        else clearErr('studentCity', 'errCity');
+
+        if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          showErr('studentEmail', 'errEmail'); valid = false;
+        } else clearErr('studentEmail', 'errEmail');
+
+        if (!phone) { showErr('studentPhone', 'errPhone'); valid = false; }
+        else clearErr('studentPhone', 'errPhone');
+      }
+
+      if (step === 2) {
+        if (!selections.country) {
+          document.getElementById('errCountry').classList.add('show'); valid = false;
+        }
+        if (!selections.course) {
+          document.getElementById('errCourse').classList.add('show'); valid = false;
+        }
+      }
+
+      return valid;
+    }
+
+    function showErr(inputId, errId) {
+      document.getElementById(inputId).classList.add('error');
+      document.getElementById(errId).classList.add('show');
+    }
+    function clearErr(inputId, errId) {
+      document.getElementById(inputId).classList.remove('error');
+      document.getElementById(errId).classList.remove('show');
+    }
+
+    // ─── Submit ──────────────────────────────────────────────────────────────────
+    async function handleSubmit() {
+      const btn = document.getElementById('submitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span>Submitting...';
+
+      const payload = {
+        creator_id: creatorProfile.id,
+        creator_username: creatorProfile.username,
+        student_name: document.getElementById('studentName').value.trim(),
+        student_email: document.getElementById('studentEmail').value.trim(),
+        student_phone: document.getElementById('studentPhone').value.trim(),
+        city: document.getElementById('studentCity').value.trim(),
+        country_of_interest: selections.country,
+        course_interest: selections.course,
+        budget: selections.budget,
+        intake_year: document.getElementById('intakeYear').value || null,
+        message: document.getElementById('studentMessage').value.trim() || null,
+        status: 'new',
+      };
+
+      // 1. Insert lead into Supabase
+      const { error: dbError } = await sb.from('leads').insert(payload);
+
+      if (dbError) {
+        btn.disabled = false;
+        btn.textContent = 'Submit Enquiry →';
+        alert('Something went wrong. Please try again or contact partners@origoabroad.com');
+        return;
+      }
+
+      // 2. Trigger email notification via Edge Function
+      try {
+        await sb.functions.invoke('send-lead-email', {
+          body: {
+            creator_name: creatorProfile.full_name,
+            creator_email: creatorProfile.email,
+            creator_username: creatorProfile.username,
+            ...payload,
+          },
+        });
+      } catch (e) {
+        // Email failure is non-blocking — lead is already saved
+        console.warn('Email notification failed:', e);
+      }
+
+      // 3. Show success
+      document.getElementById('successEmail').textContent = payload.student_email;
+      document.getElementById('mainForm').style.display = 'none';
+      document.getElementById('successState').style.display = 'block';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Creator Portal — Origo Abroad</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --navy: #0A1357;
+      --blue: #2B5BD7;
+      --violet: #5B2BD9;
+      --gold: #F5B400;
+      --paper: #FAFBFD;
+      --panel: #F3F4F6;
+      --border: #DEDFED;
+      --muted: #8988AF;
+      --red: #E11D2A;
+      --green: #16A34A;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--paper);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    /* Background grid pattern */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(43,91,215,0.04) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(43,91,215,0.04) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .page-wrap {
+      width: 100%;
+      max-width: 440px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* Logo */
+    .logo-bar {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .logo-bar .brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+    }
+    .logo-text { text-align: left; }
+    .logo-text .origo { font-size: 18px; font-weight: 800; color: var(--navy); letter-spacing: -0.5px; }
+    .logo-text .abroad { font-size: 18px; font-weight: 800; color: var(--blue); }
+    .logo-text .tagline { font-size: 10px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; }
+
+    .portal-badge {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .portal-badge span {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--navy), #1E1E8C);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 5px 14px;
+      border-radius: 20px;
+    }
+
+    /* Card */
+    .card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 36px 32px;
+      box-shadow: 0 4px 24px rgba(10,19,87,0.08);
+    }
+
+    .card-title {
+      font-size: 22px;
+      font-weight: 800;
+      color: var(--navy);
+      margin-bottom: 4px;
+    }
+    .card-sub {
+      font-size: 14px;
+      color: var(--muted);
+      margin-bottom: 28px;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--panel);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 28px;
+    }
+    .tab {
+      flex: 1;
+      padding: 9px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+      cursor: pointer;
+      text-align: center;
+      transition: all .15s;
+      border: none;
+      background: transparent;
+    }
+    .tab.active {
+      background: white;
+      color: var(--navy);
+      box-shadow: 0 1px 6px rgba(10,19,87,0.12);
+    }
+
+    /* Forms */
+    .form { display: none; flex-direction: column; gap: 16px; }
+    .form.visible { display: flex; }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-size: 13px; font-weight: 600; color: var(--navy); }
+    .field input {
+      padding: 11px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 9px;
+      font-size: 14px;
+      color: var(--navy);
+      background: var(--paper);
+      outline: none;
+      transition: border-color .15s;
+    }
+    .field input:focus { border-color: var(--blue); background: white; }
+    .field input::placeholder { color: #bbb; }
+
+    .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .hint { font-size: 11px; color: var(--muted); }
+
+    .btn-primary {
+      padding: 13px;
+      background: linear-gradient(135deg, var(--blue), var(--violet));
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity .15s, transform .1s;
+      margin-top: 4px;
+    }
+    .btn-primary:hover { opacity: .92; }
+    .btn-primary:active { transform: scale(.99); }
+    .btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+
+    .alert {
+      padding: 11px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 500;
+      display: none;
+    }
+    .alert.error { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; display: block; }
+    .alert.success { background: #f0fdf4; color: var(--green); border: 1px solid #bbf7d0; display: block; }
+
+    .divider {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 12px; color: var(--muted); margin: 4px 0;
+    }
+    .divider::before, .divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+
+    .footer-note {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .footer-note a { color: var(--blue); text-decoration: none; font-weight: 600; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.4);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="page-wrap">
+    <div class="logo-bar">
+      <a href="https://origoabroad.com" class="brand" target="_blank">
+        <div class="logo-icon">🌍</div>
+        <div class="logo-text">
+          <div><span class="origo">ORIGO</span> <span class="abroad">Abroad</span></div>
+          <div class="tagline">Your Gateway to Global Education</div>
+        </div>
+      </a>
+    </div>
+
+    <div class="portal-badge">
+      <span>✦ Creator Partner Portal</span>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Welcome Back</div>
+      <div class="card-sub">Sign in to your creator dashboard</div>
+
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('login')">Sign In</button>
+        <button class="tab" onclick="switchTab('register')">Register</button>
+      </div>
+
+      <!-- Alert box -->
+      <div id="alert" class="alert"></div>
+
+      <!-- LOGIN FORM -->
+      <form id="loginForm" class="form visible" onsubmit="handleLogin(event)">
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="loginEmail" placeholder="you@example.com" required>
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="loginPassword" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-primary" id="loginBtn">Sign In</button>
+      </form>
+
+      <!-- REGISTER FORM -->
+      <form id="registerForm" class="form" onsubmit="handleRegister(event)">
+        <div class="field-row">
+          <div class="field">
+            <label>First Name</label>
+            <input type="text" id="regFirstName" placeholder="Rahul" required>
+          </div>
+          <div class="field">
+            <label>Last Name</label>
+            <input type="text" id="regLastName" placeholder="Sharma" required>
+          </div>
+        </div>
+        <div class="field">
+          <label>Username</label>
+          <input type="text" id="regUsername" placeholder="rahulsharma" required
+            pattern="[a-z0-9-]{3,30}"
+            oninput="this.value = this.value.toLowerCase().replace(/[^a-z0-9-]/g,'')">
+          <span class="hint">3–30 characters, lowercase letters, numbers, hyphens only. Your form link will be creators.origoabroad.com/form/<strong id="usernamePreview">username</strong></span>
+        </div>
+        <div class="field">
+          <label>Email Address</label>
+          <input type="email" id="regEmail" placeholder="you@example.com" required>
+        </div>
+        <div class="field">
+          <label>Phone Number</label>
+          <input type="tel" id="regPhone" placeholder="+91 98765 43210">
+        </div>
+        <div class="field">
+          <label>Instagram / YouTube Handle (optional)</label>
+          <input type="text" id="regSocial" placeholder="@yourhandle">
+        </div>
+        <div class="field">
+          <label>Password</label>
+          <input type="password" id="regPassword" placeholder="Minimum 8 characters" minlength="8" required>
+        </div>
+        <button type="submit" class="btn-primary" id="registerBtn">Create Account</button>
+        <p style="font-size:12px;color:var(--muted);text-align:center;">
+          By registering, you agree to Origo Abroad's creator partnership terms.
+          Your account will be active immediately.
+        </p>
+      </form>
+    </div>
+
+    <div class="footer-note">
+      Issues? Email <a href="mailto:partners@origoabroad.com">partners@origoabroad.com</a>
+    </div>
+  </div>
+
+  <script>
+    // ─── Supabase Config ────────────────────────────────────────────────────────
+    // Replace these with your actual Supabase project values
+    const SUPABASE_URL = 'https://cporztleduzetlznksin.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNwb3J6dGxlZHV6ZXRsem5rc2luIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3MjQ4NjcsImV4cCI6MjA5NjMwMDg2N30.OJzSlUEzNEW69H1PRoJwfn_cj3sjLNeV9TdVX--k58M';
+    const { createClient } = supabase;
+    const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // ─── Tab switching ──────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'));
+      });
+      document.getElementById('loginForm').classList.toggle('visible', tab === 'login');
+      document.getElementById('registerForm').classList.toggle('visible', tab === 'register');
+      clearAlert();
+      if (tab === 'login') {
+        document.querySelector('.card-title').textContent = 'Welcome Back';
+        document.querySelector('.card-sub').textContent = 'Sign in to your creator dashboard';
+      } else {
+        document.querySelector('.card-title').textContent = 'Join as a Creator';
+        document.querySelector('.card-sub').textContent = 'Get your unique referral link and start earning';
+      }
+    }
+
+    // Username preview
+    document.getElementById('regUsername').addEventListener('input', function() {
+      document.getElementById('usernamePreview').textContent = this.value || 'username';
+    });
+
+    // ─── Alert helpers ──────────────────────────────────────────────────────────
+    function showAlert(msg, type = 'error') {
+      const el = document.getElementById('alert');
+      el.textContent = msg;
+      el.className = `alert ${type}`;
+    }
+    function clearAlert() {
+      const el = document.getElementById('alert');
+      el.className = 'alert';
+      el.textContent = '';
+    }
+
+    function setLoading(btnId, loading, label) {
+      const btn = document.getElementById(btnId);
+      btn.disabled = loading;
+      btn.innerHTML = loading
+        ? `<span class="spinner"></span>Please wait...`
+        : label;
+    }
+
+    // ─── Check if already logged in ────────────────────────────────────────────
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session) window.location.href = '/dashboard.html';
+    })();
+
+    // ─── Login ──────────────────────────────────────────────────────────────────
+    async function handleLogin(e) {
+      e.preventDefault();
+      clearAlert();
+      setLoading('loginBtn', true, 'Sign In');
+
+      const email = document.getElementById('loginEmail').value.trim();
+      const password = document.getElementById('loginPassword').value;
+
+      const { error } = await sb.auth.signInWithPassword({ email, password });
+
+      if (error) {
+        showAlert(error.message === 'Invalid login credentials'
+          ? 'Incorrect email or password. Please try again.'
+          : error.message);
+        setLoading('loginBtn', false, 'Sign In');
+        return;
+      }
+
+      window.location.href = '/dashboard.html';
+    }
+
+    // ─── Register ───────────────────────────────────────────────────────────────
+    async function handleRegister(e) {
+      e.preventDefault();
+      clearAlert();
+      setLoading('registerBtn', true, 'Create Account');
+
+      const firstName = document.getElementById('regFirstName').value.trim();
+      const lastName = document.getElementById('regLastName').value.trim();
+      const username = document.getElementById('regUsername').value.trim();
+      const email = document.getElementById('regEmail').value.trim();
+      const phone = document.getElementById('regPhone').value.trim();
+      const social = document.getElementById('regSocial').value.trim();
+      const password = document.getElementById('regPassword').value;
+      const fullName = `${firstName} ${lastName}`.trim();
+
+      // Check username availability
+      const { data: existing } = await sb
+        .from('creator_profiles')
+        .select('username')
+        .eq('username', username)
+        .maybeSingle();
+
+      if (existing) {
+        showAlert('This username is already taken. Please choose another.');
+        setLoading('registerBtn', false, 'Create Account');
+        return;
+      }
+
+      // Create auth user
+      const { data: authData, error: signUpError } = await sb.auth.signUp({
+        email,
+        password,
+        options: { data: { full_name: fullName } }
+      });
+
+      if (signUpError) {
+        showAlert(signUpError.message);
+        setLoading('registerBtn', false, 'Create Account');
+        return;
+      }
+
+      // Insert creator profile
+      const { error: profileError } = await sb
+        .from('creator_profiles')
+        .insert({
+          id: authData.user.id,
+          full_name: fullName,
+          username,
+          email,
+          phone: phone || null,
+          social_handle: social || null,
+        });
+
+      if (profileError) {
+        showAlert('Account created but profile setup failed. Please contact partners@origoabroad.com');
+        setLoading('registerBtn', false, 'Create Account');
+        return;
+      }
+
+      showAlert('Account created successfully! Redirecting...', 'success');
+      setTimeout(() => { window.location.href = '/dashboard.html'; }, 1200);
+    }
+  </script>
+</body>
+</html>
