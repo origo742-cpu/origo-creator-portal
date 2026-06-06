@@ -1,0 +1,6 @@
+{
+  "rewrites": [
+    { "source": "/form/:username", "destination": "/form.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" }
+  ]
+}
